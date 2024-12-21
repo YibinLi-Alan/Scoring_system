@@ -1,0 +1,6 @@
+name: my_environment
+channels:
+  - defaults
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+prefix: /opt/anaconda3/envs/my_environment
