@@ -8,13 +8,13 @@ import pandas as pd
 from sacrebleu import sentence_bleu
 from comet import download_model, load_from_checkpoint
 
-import sys
-sys.path.append('/Users/bin/Desktop/scoring_system/bleurt/build/lib/bleurt')
+bleurt_lib_path = os.path.join(os.path.dirname(__file__), "bleurt/build/lib/bleurt")
+sys.path.append(bleurt_lib_path)
+
 from score import BleurtScorer
 
-
-# Initialize BLEURT scorer
-bleurt_checkpoint = "/Users/bin/Desktop/scoring_system/bleurt/BLEURT-20"
+# Initialize BLEURT scorer with a relative path
+bleurt_checkpoint = os.path.join(os.path.dirname(__file__), "bleurt/BLEURT-20")
 bleurt_scorer = BleurtScorer(bleurt_checkpoint)
 
 # Load COMET model
