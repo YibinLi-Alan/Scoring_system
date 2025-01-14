@@ -1,0 +1,107 @@
+import streamlit as st
+import os
+import sys
+import pandas as pd
+from sacrebleu.metrics import BLEU
+from comet import download_model, load_from_checkpoint
+
+
+bleu = BLEU()
+bleurt_lib_path = os.path.join(os.path.dirname(__file__), "bleurt/build/lib/bleurt")
+sys.path.append(bleurt_lib_path)
+
+from score import BleurtScorer
+
+# Initialize BLEURT scorer with a relative path
+bleurt_checkpoint = os.path.join(os.path.dirname(__file__), "bleurt/BLEURT-20")
+bleurt_scorer = BleurtScorer(bleurt_checkpoint)
+
+# Load COMET model
+try:
+    comet_model_path = download_model("Unbabel/wmt20-comet-da")
+    comet_model = load_from_checkpoint(comet_model_path)
+    comet_model.eval()  # Put COMET in evaluation mode
+except Exception as e:
+    st.warning(f"COMET model could not be loaded: {e}")
+    comet_model = None
+
+# Helper functions
+def extract_lines_from_txt(file):
+    lines = file.read().decode("utf-8").splitlines()
+    return [line.strip() for line in lines if line.strip()]
+
+def split_into_sentences(lines):
+    sentences = []
+    end_punctuations = {".", "!", "?", "。", "！", "？", ":", ";", "۔", "।"}
+    for line in lines:
+        sentence = ""
+        for char in line:
+            sentence += char
+            if char in end_punctuations:
+                sentences.append(sentence.strip())
+                sentence = ""
+        if sentence.strip():  # Add any remaining sentence
+            sentences.append(sentence.strip())
+    return sentences
+
+def evaluate_scores(sentences1, sentences2, source_sentences):
+    bleurt_scores = []
+    scarebleu_scores = []
+    comet_scores = []
+    source_sentences_used = []
+
+    # Iterate through the sentences and calculate scores
+    for i in range(len(sentences1)):
+        hyp = sentences1[i]
+        ref = sentences2[i]
+        src = source_sentences[i] if source_sentences else ""
+
+        try:
+            # BLEURT score
+            bleurt_score = bleurt_scorer.score(references=[ref], candidates=[hyp])
+            bleurt_scores.append(bleurt_score[0] if bleurt_score else 0)
+        except Exception as e:
+            st.warning(f"Error processing BLEURT score for pair ({hyp}, {ref}): {e}")
+            bleurt_scores.append(0)
+
+        try:
+            # SacréBLEU score
+            scarebleu_scores.append(bleu.corpus_score([hyp], [[ref]]).score)
+        except Exception as e:
+            st.warning(f"Error processing SacréBLEU score for pair ({hyp}, {ref}): {e}")
+            scarebleu_scores.append(0)
+
+        if comet_model and source_sentences:
+            try:
+                comet_input = [{"src": src, "mt": hyp, "ref": ref}]
+                comet_predictions = comet_model.predict(comet_input)
+                #if your computer have gpu use this line 
+                #comet_predictions = model.predict(comet_input, batch_size=8, gpus=1)
+
+                # Access system_score or scores
+                if hasattr(comet_predictions, "system_score"):
+                    comet_scores.append(comet_predictions.system_score)
+                elif hasattr(comet_predictions, "scores") and comet_predictions.scores:
+                    comet_scores.append(comet_predictions.scores[0])
+                else:
+                    st.warning(f"Unexpected COMET output structure: {comet_predictions}")
+                    comet_scores.append(0)
+
+                source_sentences_used.append(src)
+            except Exception as e:
+                st.warning(f"Error processing COMET score for pair ({hyp}, {ref}): {e}")
+                comet_scores.append(0)
+                source_sentences_used.append("")
+        else:
+            if not comet_model:
+                st.warning("COMET model is not loaded; skipping COMET score evaluation.")
+            comet_scores.append(0)
+            source_sentences_used.append("")
+
+    # Calculate averages
+    avg_bleurt = sum(bleurt_scores) / len(bleurt_scores) if bleurt_scores else 0
+    avg_scarebleu = sum(scarebleu_scores) / len(scarebleu_scores) if scarebleu_scores else 0
+    avg_comet = sum(comet_scores) / len(comet_scores) if comet_scores else 0
+
+    return bleurt_scores, scarebleu_scores, comet_scores, avg_bleurt, avg_scarebleu, avg_comet, source_sentences_used
+
