@@ -10,7 +10,6 @@ There is a webinterface using streamlit
 # Installation instructions
 Install the conda environment
 ```
-pip install --upgrade pip
 conda create -n scoring --file requirements_conda.txt
 conda activate scoring
 ```
