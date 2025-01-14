@@ -1,13 +1,11 @@
 import streamlit as st
 import os
 import sys
-from docx import Document
-from PyPDF2 import PdfReader
-import re
 import pandas as pd
-from sacrebleu import sentence_bleu
+from sacrebleu.metrics import BLEU
 from comet import download_model, load_from_checkpoint
 
+bleu = BLEU()
 bleurt_lib_path = os.path.join(os.path.dirname(__file__), "bleurt/build/lib/bleurt")
 sys.path.append(bleurt_lib_path)
 
@@ -27,42 +25,29 @@ except Exception as e:
     comet_model = None
 
 # Helper functions
-def extract_paragraphs_from_docx(file):
-    doc = Document(file)
-    paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
-    return paragraphs
+def extract_lines_from_txt(file):
+    lines = file.read().decode("utf-8").splitlines()
+    return [line.strip() for line in lines if line.strip()]
 
-def extract_paragraphs_from_pdf(file):
-    reader = PdfReader(file)
-    paragraphs = []
-    for page in reader.pages:
-        paragraphs.extend(page.extract_text().split("\n"))
-    return [p.strip() for p in paragraphs if p.strip()]
-
-def split_into_sentences(paragraphs):
+def split_into_sentences(lines):
     sentences = []
-    for paragraph in paragraphs:
-        sentences.extend(re.split(r'(?<=[.!?])\s+|(?<=\u3002|\uff01|\uff1f)', paragraph))
-    return [sentence.strip() for sentence in sentences if sentence.strip()]
+    end_punctuations = {".", "!", "?", "。", "！", "？", ":", ";", "۔", "।"}
+    for line in lines:
+        sentence = ""
+        for char in line:
+            sentence += char
+            if char in end_punctuations:
+                sentences.append(sentence.strip())
+                sentence = ""
+        if sentence.strip():  # Add any remaining sentence
+            sentences.append(sentence.strip())
+    return sentences
 
 def evaluate_scores(sentences1, sentences2, source_sentences):
     bleurt_scores = []
     scarebleu_scores = []
     comet_scores = []
     source_sentences_used = []
-
-    # Check if all sentence lists are of the same length
-    if len(sentences1) != len(sentences2):
-        st.error("The number of sentences in the first and second paragraphs does not match.")
-        st.stop()
-
-    if source_sentences and len(sentences1) != len(source_sentences):
-        st.error("The number of sentences in the first paragraph does not match the source sentences.")
-        st.stop()
-
-    if source_sentences and len(sentences2) != len(source_sentences):
-        st.error("The number of sentences in the second paragraph does not match the source sentences.")
-        st.stop()
 
     # Iterate through the sentences and calculate scores
     for i in range(len(sentences1)):
@@ -80,7 +65,7 @@ def evaluate_scores(sentences1, sentences2, source_sentences):
 
         try:
             # SacréBLEU score
-            scarebleu_scores.append(sentence_bleu(hyp, [ref]).score)
+            scarebleu_scores.append(bleu.corpus_score([hyp], [[ref]]).score)
         except Exception as e:
             st.warning(f"Error processing SacréBLEU score for pair ({hyp}, {ref}): {e}")
             scarebleu_scores.append(0)
@@ -89,6 +74,8 @@ def evaluate_scores(sentences1, sentences2, source_sentences):
             try:
                 comet_input = [{"src": src, "mt": hyp, "ref": ref}]
                 comet_predictions = comet_model.predict(comet_input)
+                #if your computer have gpu use this line 
+                #comet_predictions = model.predict(comet_input, batch_size=8, gpus=1)
 
                 # Access system_score or scores
                 if hasattr(comet_predictions, "system_score"):
@@ -117,68 +104,3 @@ def evaluate_scores(sentences1, sentences2, source_sentences):
 
     return bleurt_scores, scarebleu_scores, comet_scores, avg_bleurt, avg_scarebleu, avg_comet, source_sentences_used
 
-# Streamlit app
-st.title("File Upload and Sentence Matching with Evaluation")
-
-# Upload files
-uploaded_file1 = st.file_uploader("Upload the machine-translated file (DOCX or PDF)", type=["docx", "pdf"], key="file1")
-uploaded_file2 = st.file_uploader("Upload the human-generated (standard) file (DOCX or PDF)", type=["docx", "pdf"], key="file2")
-uploaded_source = st.file_uploader("Upload the source file (DOCX or PDF, optional for COMET)", type=["docx", "pdf"], key="source")
-
-if uploaded_file1 and uploaded_file2:
-    st.write("Files successfully uploaded!")
-    if uploaded_source:
-        st.write("Source file uploaded for COMET evaluation.")
-
-    if st.button("Generate Matching Table and Evaluate Scores"):
-        try:
-            # Extract paragraphs from uploaded files
-            paragraphs1 = extract_paragraphs_from_docx(uploaded_file1) if uploaded_file1.name.endswith("docx") else extract_paragraphs_from_pdf(uploaded_file1)
-            paragraphs2 = extract_paragraphs_from_docx(uploaded_file2) if uploaded_file2.name.endswith("docx") else extract_paragraphs_from_pdf(uploaded_file2)
-            source_sentences = None
-
-            if uploaded_source:
-                source_paragraphs = extract_paragraphs_from_docx(uploaded_source) if uploaded_source.name.endswith("docx") else extract_paragraphs_from_pdf(uploaded_source)
-                source_sentences = split_into_sentences(source_paragraphs)
-
-            # Split paragraphs into sentences
-            sentences1 = split_into_sentences(paragraphs1)
-            sentences2 = split_into_sentences(paragraphs2)
-
-            # Evaluate scores
-            result = evaluate_scores(sentences1, sentences2, source_sentences)
-
-            bleurt_scores, scarebleu_scores, comet_scores, avg_bleurt, avg_scarebleu, avg_comet, source_sentences_used = result
-
-            # Create dataframe for display
-            if uploaded_source:
-                matched_sentences = list(zip(source_sentences_used, sentences1, sentences2))
-                df = pd.DataFrame(matched_sentences, columns=["Source Sentences", "Machine-Generated Sentences", "Standard Translated Sentences"])
-            else:
-                matched_sentences = list(zip(sentences1, sentences2))
-                df = pd.DataFrame(matched_sentences, columns=["Machine-Generated Sentences", "Standard Translated Sentences"])
-
-            df["BLEURT Score"] = bleurt_scores
-            df["SacréBLEU Score"] = scarebleu_scores
-
-            if uploaded_source:
-                df["COMET Score"] = comet_scores
-
-            # Add row for averages
-            avg_row = {
-                "Machine-Generated Sentences": "AVERAGE",
-                "Standard Translated Sentences": "AVERAGE",
-                "BLEURT Score": avg_bleurt,
-                "SacréBLEU Score": avg_scarebleu,
-            }
-
-            if uploaded_source:
-                avg_row["Source Sentences"] = "AVERAGE"
-                avg_row["COMET Score"] = avg_comet
-
-            df = pd.concat([df, pd.DataFrame([avg_row])], ignore_index=True)
-
-            # Display the results
-            st.dataframe(df)
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
