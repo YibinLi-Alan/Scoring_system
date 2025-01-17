@@ -1,19 +1,10 @@
 import streamlit as st
-import os
-import sys
-import pandas as pd
 from sacrebleu.metrics import BLEU
 from comet import download_model, load_from_checkpoint
+import torch
+from bleurt import score
 
 bleu = BLEU()
-bleurt_lib_path = os.path.join(os.path.dirname(__file__), "bleurt/build/lib/bleurt")
-sys.path.append(bleurt_lib_path)
-
-from score import BleurtScorer
-
-# Initialize BLEURT scorer with a relative path
-bleurt_checkpoint = os.path.join(os.path.dirname(__file__), "bleurt/BLEURT-20")
-bleurt_scorer = BleurtScorer(bleurt_checkpoint)
 
 # Load COMET model
 try:
@@ -57,8 +48,8 @@ def evaluate_scores(sentences1, sentences2, source_sentences):
 
         try:
             # BLEURT score
-            bleurt_score = bleurt_scorer.score(references=[ref], candidates=[hyp])
-            bleurt_scores.append(bleurt_score[0] if bleurt_score else 0)
+            bleurt_ops = score.create_bleurt_ops()
+            bleurt_scores= bleurt_ops(references=ref, candidates=hyp)
         except Exception as e:
             st.warning(f"Error processing BLEURT score for pair ({hyp}, {ref}): {e}")
             bleurt_scores.append(0)
@@ -73,9 +64,12 @@ def evaluate_scores(sentences1, sentences2, source_sentences):
         if comet_model and source_sentences:
             try:
                 comet_input = [{"src": src, "mt": hyp, "ref": ref}]
-                comet_predictions = comet_model.predict(comet_input)
-                #if your computer have gpu use this line 
-                #comet_predictions = model.predict(comet_input, batch_size=8, gpus=1)
+                if torch.cuda.is_available():
+                # Use GPU for prediction
+                    comet_predictions = comet_model.predict(comet_input, batch_size=8, gpus=1)
+                else:
+                # Use CPU for prediction
+                    comet_predictions = comet_model.predict(comet_input)
 
                 # Access system_score or scores
                 if hasattr(comet_predictions, "system_score"):
