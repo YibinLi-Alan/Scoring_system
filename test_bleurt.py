@@ -1,6 +1,6 @@
 from bleurt import score
 
-checkpoint = "bleurt/BLEURT-20"
+checkpoint = "/shared/BLEURT-20"
 references = ["This is a test."]
 candidates = ["This is the test."]
 
