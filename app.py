@@ -8,8 +8,9 @@ bleu = BLEU()
 
 # Load COMET model
 try:
-    comet_model_path = download_model("Unbabel/wmt20-comet-da")
-    comet_model = load_from_checkpoint(comet_model_path)
+    # model_path = download_model("Unbabel/XCOMET-XL")
+    model_path = download_model("Unbabel/wmt22-comet-da")
+    comet_model = load_from_checkpoint(model_path)
     comet_model.eval()  # Put COMET in evaluation mode
 except Exception as e:
     st.warning(f"COMET model could not be loaded: {e}")
@@ -48,8 +49,9 @@ def evaluate_scores(sentences1, sentences2, source_sentences):
 
         try:
             # BLEURT score
-            bleurt_ops = score.create_bleurt_ops()
-            bleurt_scores= bleurt_ops(references=ref, candidates=hyp)
+            checkpoint = "bleurt/BLEURT-20"
+            scorer = score.BleurtScorer(checkpoint)
+            bleurt_scores= scorer.score(references=[ref], candidates=[hyp])
         except Exception as e:
             st.warning(f"Error processing BLEURT score for pair ({hyp}, {ref}): {e}")
             bleurt_scores.append(0)
@@ -69,7 +71,8 @@ def evaluate_scores(sentences1, sentences2, source_sentences):
                     comet_predictions = comet_model.predict(comet_input, batch_size=8, gpus=1)
                 else:
                 # Use CPU for prediction
-                    comet_predictions = comet_model.predict(comet_input)
+                    comet_model.device = torch.device("cpu")
+                    comet_predictions = comet_model.predict(comet_input, batch_size=1)
 
                 # Access system_score or scores
                 if hasattr(comet_predictions, "system_score"):
