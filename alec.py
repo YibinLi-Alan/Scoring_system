@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
-from app import extract_lines_from_txt, split_into_sentences, evaluate_scores
+from alecapp import extract_lines_from_txt, evaluate_scores
 
 # Streamlit app
 st.title("Model Evaluation with Pre-Uploaded Files")
@@ -15,7 +15,8 @@ models = [folder for folder in os.listdir(results_folder) if os.path.isdir(os.pa
 models_sorted = sorted(models, key=lambda x: int(x.split('_')[-1]))  # Extract number and sort numerically
 
 # Display available scoring methods
-score_method = ['sacreBLUE','BLEURT', 'Comet']
+#score_method = ['sacreBLUE','BLEURT', 'Comet']
+score_method = ['sacreBLUE']
 selected_score_method = st.selectbox("Select a score method:", score_method)
 
 # Load result files for each model
@@ -49,32 +50,35 @@ for model in models_sorted:
             machine_translation = f.read()
         
         # Split into sentences
-        machine_sentences = split_into_sentences([machine_translation])
+        machine_sentences = extract_lines_from_txt(machine_translation)
 
         # Load the reference translation
-        reference_file_name = "test.uk"  
-        reference_file_path = reference_files.get(reference_file_name)
+        humanTranslation = "test.uk"  
+        reference_file_path = reference_files.get(humanTranslation)
         if reference_file_path:
             with open(reference_file_path, "r", encoding="utf-8") as f:
                 reference_translation = f.read()
-            reference_sentences = split_into_sentences([reference_translation])
+            reference_sentences = extract_lines_from_txt(reference_translation)
 
         # Load source sentences for COMET
-        source_sentences = None  
-        source_file_path = reference_files.get("test.cs")
-        if source_file_path:
-            with open(source_file_path, "r", encoding="utf-8") as f:
-                source_translation = f.read()
-            source_sentences = split_into_sentences([source_translation])
+        # source_sentences = None  
+        # source_file_path = reference_files.get("test.cs")
+        # if source_file_path:
+        #     with open(source_file_path, "r", encoding="utf-8") as f:
+        #         source_translation = f.read()
+        #     source_sentences = split_into_sentences([source_translation])
 
         # Evaluate scores
-        result = evaluate_scores(machine_sentences, reference_sentences, source_sentences)
+        result = evaluate_scores(machine_sentences, reference_sentences)
         
+        # if result:
+        #     bleurt_scores, scarebleu_scores, comet_scores, avg_bleurt, avg_scarebleu, avg_comet, source_sentences_used = result
+        # else:
+        #     bleurt_scores, scarebleu_scores, comet_scores = [], [], []
         if result:
-            bleurt_scores, scarebleu_scores, comet_scores, avg_bleurt, avg_scarebleu, avg_comet, source_sentences_used = result
+            scarebleu_scores,avg_scarebleu= result
         else:
-            bleurt_scores, scarebleu_scores, comet_scores = [], [], []
-
+            scarebleu_scores= []
         # Assign scores to the correct method
         if selected_score_method == "BLEURT":
             scores_row[f"n-best {file_index}"] = bleurt_scores[file_index-1] if bleurt_scores else None
