@@ -40,7 +40,7 @@ if selected_model_label:
                     st.success(f"Loaded {file_name} automatically.")
 
 #automaticlly upload test file  
-test_out_file = 'data/wmt22/cs-uk/test.us'
+test_out_file = 'data/wmt22/cs-uk/test.uk'
 with open(test_out_file,"r") as t:
     test_out_file_is = t.readlines()
     st.success(f"Loaded{test_out_file}automatically")
