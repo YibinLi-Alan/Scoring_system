@@ -35,7 +35,8 @@ def evaluete_scores_bluert(sentences1, sentences2):
             bleurt_scores= scorer.score(references=[ref], candidates=[hyp])
         except Exception as e:
              st.warning(f"Error processing BLEURT score for pair ({hyp}, {ref}): {e}")
-             bleurt_scores.append(0)
+             bleurt_scores.append('NA')
+    assert isinstance(bleurt_scores, list) and len(bleurt_scores) == 1
     avg_bleurt = sum(bleurt_scores) / len(bleurt_scores) if bleurt_scores else 0
     return avg_bleurt,bleurt_scores
 
