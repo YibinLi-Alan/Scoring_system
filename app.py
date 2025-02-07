@@ -1,7 +1,6 @@
 import streamlit as st
 from sacrebleu.metrics import BLEU
 from comet import download_model, load_from_checkpoint
-import torch
 from bleurt import score
 
 bleu = BLEU()
@@ -32,7 +31,8 @@ def evaluete_scores_bluert(sentences1, sentences2):
         hyp = sentences1[i]
         ref = sentences2[i]
         try: 
-            bleurt_scores= scorer.score(references=[ref], candidates=[hyp])
+            score_value = scorer.score(references=[ref], candidates=[hyp])[0]
+            bleurt_scores.append(score_value)
         except Exception as e:
              st.warning(f"Error processing BLEURT score for pair ({hyp}, {ref}): {e}")
              bleurt_scores.append('NA')
