@@ -1,8 +1,16 @@
 import streamlit as st
-from app import evaluete_scores_scarebleu, evaluete_scores_bluert
 import pandas as pd
 import os
 # Streamlit app
+import tensorflow as tf
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        print(e)
+
 
 st.title("TXT File Upload and Sentence Matching with Evaluation")
 
@@ -53,13 +61,30 @@ with open(train_out_file,"r") as t:
 
 
 #filter for score methods to display
-# if uploaded_source:
-#     score_method = ['BLEURT','sacreBLUE','Comet']
-# else:
-#     score_method = ['BLEURT','sacreBLUE']
-score_method = ['sacreBLUE','Bleurt']
+score_method = ['sacreBLUE','Bleurt','Comet']
 selected_score_method = st.selectbox("Select a score method to display:",score_method)
-#path to each file to sparate to sentence 
+
+
+if "selected_score_method" in locals():
+    if selected_score_method == "sacreBLUE":
+        from app import evaluete_scores_scarebleu
+    elif selected_score_method == "Bleurt":
+        from app import evaluete_scores_bluert
+    elif selected_score_method == "Comet":
+        from app import evaluete_scores_comet
+
+if selected_score_method == "Comet":
+    source_for_trainning = "data/wmt22/cs-uk/train.cs.30k"
+    with open(source_for_trainning,"r") as l:
+        source_for_trainning_is = l.readlines()
+        st.success(f"Loaded{source_for_trainning}automatically")
+
+    source_for_testing = "data/wmt22/cs-uk/test.cs"
+    with open(source_for_testing,"r") as p:
+        source_for_testing_is = p.readlines()
+        st.success(f"Loaded{source_for_testing}automatically")
+    
+
 
 
 #logic
@@ -108,44 +133,76 @@ if selected_model_label:
             if selected_score_method == "Bleurt":
                 try:
                     for name_of_the_file,needed_file in uploaded_files_testing.items():
-                        result = evaluete_scores_bluert(needed_file, test_out_file_is)
-                        avg_bleurt,bleurt_scores = result
+                        result = evaluete_scores_bluert(needed_file,test_out_file_is)
+                        avg_bleurt,score_value = result
 
                     
-                        matched_sentences = list(zip(needed_file, test_out_file_is))
-                        df = pd.DataFrame(matched_sentences, columns=["Machine-Generated Sentences", "Standard Translated Sentences"])
+                        matched_sentences = list(zip(needed_file, test_out_file_is,score_value))
+                        df = pd.DataFrame(matched_sentences, columns=["Machine-Generated Sentences", "Standard Translated Sentences", "Bleurt Score"])
+                        df["Bleurt Score"] =df["Bleurt Score"].astype(str)
                         df.insert(0, "File Name", name_of_the_file)
-                        df["SacréBLEU Score"] = bleurt_scores
                         avg_row = {
-                            "Machine-Generated Sentences": "AVERAGE",
-                            "Standard Translated Sentences": "AVERAGE",
-                            "SacréBLEU Score": avg_bleurt,
+                                     "Machine-Generated Sentences": "AVERAGE",
+                                     "Standard Translated Sentences": "AVERAGE",
+                                     "Bleurt Average Score": str(avg_bleurt),
                                     }
                         df = pd.concat([df, pd.DataFrame([avg_row])], ignore_index=True)
                         st.dataframe(df)
 
                     for name_of_the_file1,needed_file1 in uploaded_files_training.items():
                         result1 = evaluete_scores_bluert(needed_file1, train_out_file_is)
-                        avg_bleurt1,bleurt_scores1 = result1
+                        avg_bleurt1,score_value1 = result1
 
-                        matched_sentences1 = list(zip(needed_file1, train_out_file_is))
-                        df1 = pd.DataFrame(matched_sentences1, columns=["Machine-Generated Sentences", "Standard Translated Sentences"])
+                        matched_sentences1 = list(zip(needed_file1, train_out_file_is,score_value1))
+                        df1 = pd.DataFrame(matched_sentences1, columns=["Machine-Generated Sentences", "Standard Translated Sentences", "bleurt Score"])
+                        df["Bleurt Score"] = df["Bleurt Score"].astype(str)
                         df1.insert(0, "File Name", name_of_the_file1)
-                        df1["SacréBLEU Score"] = bleurt_scores1
                         avg_row1 = {
                             "Machine-Generated Sentences": "AVERAGE",
                             "Standard Translated Sentences": "AVERAGE",
-                            "SacréBLEU Score": avg_bleurt1,
+                            "Bleurt Average Score": str(avg_bleurt1),
                                     }
                         df1 = pd.concat([df1, pd.DataFrame([avg_row1])], ignore_index=True)
                         st.dataframe(df1)
 
                 except Exception as e:
-                    st.error(f"An error occurred: {e}") 
+                    st.error(f"An error occurred: {e}")
+    elif uploaded_files_training and uploaded_files_testing and test_out_file_is and train_out_file_is and source_for_trainning_is and source_for_testing_is:
+        if selected_score_method == "Comet":
+            try:
+                for name_of_the_file,needed_file in uploaded_files_testing.items():
+                    result = evaluete_scores_comet(needed_file, test_out_file_is,source_for_testing_is)
+                    comet_scores, avg_comet= result
 
+                    matched_sentences = list(zip(needed_file, test_out_file_is,comet_scores))
+                    df = pd.DataFrame(matched_sentences, columns=["Machine-Generated Sentences", "Standard Translated Sentences", "Comet Score"])
+                    df["Comet Score"] =df["Comet Score"].astype(str)
+                    df.insert(0, "File Name", name_of_the_file)
+                    avg_row = {
+                        "Machine-Generated Sentences": "AVERAGE",
+                        "Standard Translated Sentences": "AVERAGE",
+                        "Comet Average Score": str(avg_comet),
+                                }
+                    df = pd.concat([df, pd.DataFrame([avg_row])], ignore_index=True)
+                    st.dataframe(df)
 
+                for name_of_the_file1,needed_file1 in uploaded_files_training.items():
+                    result1 = evaluete_scores_bluert(needed_file1, train_out_file_is,source_for_trainning_is)
+                    comet_scores1, avg_comet1 = result1
 
+                    matched_sentences1 = list(zip(needed_file1, train_out_file_is,comet_scores1))
+                    df1 = pd.DataFrame(matched_sentences1, columns=["Machine-Generated Sentences", "Standard Translated Sentences", "Comet Score"])
+                    df["Comet Score"] =df["Comet Score"].astype(str)
+                    df1.insert(0, "File Name", name_of_the_file1)
+                    avg_row1 = {
+                        "Machine-Generated Sentences": "AVERAGE",
+                        "Standard Translated Sentences": "AVERAGE",
+                        "Comet Average Score": str(avg_comet1),
+                                }
+                    df1 = pd.concat([df1, pd.DataFrame([avg_row1])], ignore_index=True)
+                    st.dataframe(df1)
 
-
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
 
 
