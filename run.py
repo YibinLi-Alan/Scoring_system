@@ -1,15 +1,8 @@
 import streamlit as st
+from app import evaluete_scores_scarebleu, evaluete_scores_bluert, evaluete_scores_comet
 import pandas as pd
 import os
-# Streamlit app
-import tensorflow as tf
-gpus = tf.config.experimental.list_physical_devices('GPU')
-if gpus:
-    try:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-    except RuntimeError as e:
-        print(e)
+
 
 
 st.title("TXT File Upload and Sentence Matching with Evaluation")
@@ -65,13 +58,6 @@ score_method = ['sacreBLUE','Bleurt','Comet']
 selected_score_method = st.selectbox("Select a score method to display:",score_method)
 
 
-if "selected_score_method" in locals():
-    if selected_score_method == "sacreBLUE":
-        from app import evaluete_scores_scarebleu
-    elif selected_score_method == "Bleurt":
-        from app import evaluete_scores_bluert
-    elif selected_score_method == "Comet":
-        from app import evaluete_scores_comet
 
 if selected_score_method == "Comet":
     source_for_trainning = "data/wmt22/cs-uk/train.cs.30k"
