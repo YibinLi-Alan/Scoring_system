@@ -44,7 +44,7 @@ def evaluete_scores_bluert(sentences1, sentences2):
 
 
 
-model_path = download_model("Unbabel/XCOMET-XL")
+model_path = download_model("Unbabel/wmt22-comet-da")
 model = load_from_checkpoint(model_path)
 
 def evaluete_scores_comet(sentences1, sentences2, source_sentences):
