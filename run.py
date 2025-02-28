@@ -59,23 +59,22 @@ selected_score_method = st.selectbox("Select a score method to display:",score_m
 
 
 
-if selected_score_method == "Comet":
-    source_for_trainning = "data/wmt22/cs-uk/train.cs.30k"
-    with open(source_for_trainning,"r") as l:
-        source_for_trainning_is = l.readlines()
-        st.success(f"Loaded{source_for_trainning}automatically")
+source_for_trainning = "data/wmt22/cs-uk/train.cs.30k"
+with open(source_for_trainning,"r") as l:
+    source_for_trainning_is = l.readlines()
+    st.success(f"Loaded{source_for_trainning}automatically")
 
-    source_for_testing = "data/wmt22/cs-uk/test.cs"
-    with open(source_for_testing,"r") as p:
-        source_for_testing_is = p.readlines()
-        st.success(f"Loaded{source_for_testing}automatically")
+source_for_testing = "data/wmt22/cs-uk/test.cs"
+with open(source_for_testing,"r") as p:
+    source_for_testing_is = p.readlines()
+    st.success(f"Loaded{source_for_testing}automatically")
     
 
 
 
 #logic
 if selected_model_label:
-    if uploaded_files_training and uploaded_files_testing and test_out_file_is and train_out_file_is:
+    if selected_score_method =="sacreBLUE" and selected_score_method == "Bleurt":
         st.write("Ready for scareBLEU and BLEURT scoring!")
         if st.button("Generate Matching Table and Evaluate Scores"):
             if selected_score_method == "sacreBLUE":
@@ -153,12 +152,15 @@ if selected_model_label:
 
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
-    elif uploaded_files_training and uploaded_files_testing and test_out_file_is and train_out_file_is and source_for_trainning_is and source_for_testing_is:
+    if uploaded_files_training and uploaded_files_testing and test_out_file_is and train_out_file_is and source_for_trainning_is and source_for_testing_is:
         if selected_score_method == "Comet":
+            print('calculating comet')
             try:
                 for name_of_the_file,needed_file in uploaded_files_testing.items():
+                    print(f'working on file {name_of_the_file} in first for loop')
                     result = evaluete_scores_comet(needed_file, test_out_file_is,source_for_testing_is)
                     comet_scores, avg_comet= result
+
 
                     matched_sentences = list(zip(needed_file, test_out_file_is,comet_scores))
                     df = pd.DataFrame(matched_sentences, columns=["Machine-Generated Sentences", "Standard Translated Sentences", "Comet Score"])
@@ -173,6 +175,8 @@ if selected_model_label:
                     st.dataframe(df)
 
                 for name_of_the_file1,needed_file1 in uploaded_files_training.items():
+                    print(f'working on file {name_of_the_file} in second for loop')
+
                     result1 = evaluete_scores_bluert(needed_file1, train_out_file_is,source_for_trainning_is)
                     comet_scores1, avg_comet1 = result1
 
