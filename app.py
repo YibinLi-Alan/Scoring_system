@@ -51,9 +51,10 @@ def evaluete_scores_comet(sentences1, sentences2, source_sentences):
     try:
         comet_input = [{"src": src, "mt": hyp, "ref": ref} for src, hyp, ref in zip(source_sentences, sentences1, sentences2)]
         comet_scores = model.predict(comet_input, batch_size=8, gpus=1)
+        comet_scores = comet_scores["scores"]
     except Exception as e:
-        st.warning(f"Error processing COMET score for pair ({sentences1}, {sentences2}): {e}")
-        comet_scores.append(0)
+        st.warning(f"Error processing COMET score: {e}")
+        comet_scores = [0] * len(sentences1)
     avg_comet = sum(comet_scores) / len(comet_scores) if comet_scores else 0
     return comet_scores, avg_comet
     

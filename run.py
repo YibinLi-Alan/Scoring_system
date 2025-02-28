@@ -154,45 +154,46 @@ if selected_model_label:
                     st.error(f"An error occurred: {e}")
     if uploaded_files_training and uploaded_files_testing and test_out_file_is and train_out_file_is and source_for_trainning_is and source_for_testing_is:
         if selected_score_method == "Comet":
-            print('calculating comet')
-            try:
-                for name_of_the_file,needed_file in uploaded_files_testing.items():
-                    print(f'working on file {name_of_the_file} in first for loop')
-                    result = evaluete_scores_comet(needed_file, test_out_file_is,source_for_testing_is)
-                    comet_scores, avg_comet= result
+            if st.button("Generate Matching Table and Evaluate Scores"):
+                print('calculating comet')
+                try:
+                    for name_of_the_file,needed_file in uploaded_files_testing.items():
+                        print(f'working on file {name_of_the_file} in first for loop')
+                        result = evaluete_scores_comet(needed_file, test_out_file_is,source_for_testing_is)
+                        comet_scores, avg_comet= result
 
 
-                    matched_sentences = list(zip(needed_file, test_out_file_is,comet_scores))
-                    df = pd.DataFrame(matched_sentences, columns=["Machine-Generated Sentences", "Standard Translated Sentences", "Comet Score"])
-                    df["Comet Score"] =df["Comet Score"].astype(str)
-                    df.insert(0, "File Name", name_of_the_file)
-                    avg_row = {
-                        "Machine-Generated Sentences": "AVERAGE",
-                        "Standard Translated Sentences": "AVERAGE",
-                        "Comet Average Score": str(avg_comet),
-                                }
-                    df = pd.concat([df, pd.DataFrame([avg_row])], ignore_index=True)
-                    st.dataframe(df)
+                        matched_sentences = list(zip(needed_file, test_out_file_is,comet_scores))
+                        df = pd.DataFrame(matched_sentences, columns=["Machine-Generated Sentences", "Standard Translated Sentences", "Comet Score"])
+                        df["Comet Score"] =df["Comet Score"].astype(str)
+                        df.insert(0, "File Name", name_of_the_file)
+                        avg_row = {
+                            "Machine-Generated Sentences": "AVERAGE",
+                            "Standard Translated Sentences": "AVERAGE",
+                            "Comet Average Score": str(avg_comet),
+                                    }
+                        df = pd.concat([df, pd.DataFrame([avg_row])], ignore_index=True)
+                        st.dataframe(df)
 
-                for name_of_the_file1,needed_file1 in uploaded_files_training.items():
-                    print(f'working on file {name_of_the_file} in second for loop')
+                    for name_of_the_file1,needed_file1 in uploaded_files_training.items():
+                        print(f'working on file {name_of_the_file} in second for loop')
 
-                    result1 = evaluete_scores_bluert(needed_file1, train_out_file_is,source_for_trainning_is)
-                    comet_scores1, avg_comet1 = result1
+                        result1 = evaluete_scores_bluert(needed_file1, train_out_file_is,source_for_trainning_is)
+                        comet_scores1, avg_comet1 = result1
 
-                    matched_sentences1 = list(zip(needed_file1, train_out_file_is,comet_scores1))
-                    df1 = pd.DataFrame(matched_sentences1, columns=["Machine-Generated Sentences", "Standard Translated Sentences", "Comet Score"])
-                    df["Comet Score"] =df["Comet Score"].astype(str)
-                    df1.insert(0, "File Name", name_of_the_file1)
-                    avg_row1 = {
-                        "Machine-Generated Sentences": "AVERAGE",
-                        "Standard Translated Sentences": "AVERAGE",
-                        "Comet Average Score": str(avg_comet1),
-                                }
-                    df1 = pd.concat([df1, pd.DataFrame([avg_row1])], ignore_index=True)
-                    st.dataframe(df1)
+                        matched_sentences1 = list(zip(needed_file1, train_out_file_is,comet_scores1))
+                        df1 = pd.DataFrame(matched_sentences1, columns=["Machine-Generated Sentences", "Standard Translated Sentences", "Comet Score"])
+                        df["Comet Score"] =df["Comet Score"].astype(str)
+                        df1.insert(0, "File Name", name_of_the_file1)
+                        avg_row1 = {
+                            "Machine-Generated Sentences": "AVERAGE",
+                            "Standard Translated Sentences": "AVERAGE",
+                            "Comet Average Score": str(avg_comet1),
+                                    }
+                        df1 = pd.concat([df1, pd.DataFrame([avg_row1])], ignore_index=True)
+                        st.dataframe(df1)
 
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
 
 
