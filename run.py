@@ -175,7 +175,7 @@ if selected_model_label:
                     for name_of_the_file1,needed_file1 in uploaded_files_training.items():
                         print(f'working on file {name_of_the_file} in second for loop')
 
-                        result1 = evaluete_scores_bluert(needed_file1, train_out_file_is,source_for_trainning_is)
+                        result1 = evaluete_scores_comet(needed_file1, train_out_file_is,source_for_trainning_is)
                         comet_scores1, avg_comet1 = result1
 
                         matched_sentences1 = list(zip(needed_file1, train_out_file_is,comet_scores1))
