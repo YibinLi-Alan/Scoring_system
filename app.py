@@ -2,6 +2,9 @@ import streamlit as st
 from sacrebleu.metrics import BLEU
 from comet import download_model, load_from_checkpoint
 from bleurt import score
+import json
+import os
+
 
 
 bleu = BLEU()
@@ -12,8 +15,53 @@ except Exception as e:
     st.error(f"Failed to load BLEURT model: {e}")
     scorer = None 
 
+CACHE_FILE = "score_cache.json"
 
-def evaluete_scores_scarebleu(sentences1, sentences2):
+if not os.path.exists(CACHE_FILE):
+  with open(CACHE_FILE,"w") as f:
+      json.dump({},f)
+
+with open(CACHE_FILE,"r") as f:
+    try:
+        score_cache=json.load(f)
+    except json.JSONDecodeError:
+        print("error reading cache file")
+        score_cache={}
+
+
+def save_cache():
+    """Load existing cache, update it with new scores, and save it back to the file."""
+    global score_cache
+
+    # Load existing cache first
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r") as f:
+                existing_cache = json.load(f)
+        except json.JSONDecodeError:
+            existing_cache = {}
+    else:
+        existing_cache = {}
+
+    # Merge new scores with existing ones
+    existing_cache.update(score_cache)
+
+    # Save updated cache
+    with open(CACHE_FILE, "w") as f:
+        json.dump(existing_cache, f, indent=4)
+
+    # Update in-memory cache
+    score_cache = existing_cache
+
+
+
+
+def evaluete_scores_scarebleu(sentences1, sentences2,filename):
+    cache_key = f"{filename}_sacreBlue"
+    if cache_key in score_cache:
+        print(f"Loading cached Sacreblue scores for {filename}")
+        return score_cache[cache_key]["scores"],score_cache[cache_key]["average"]
+    
     scarebleu_scores = []
     for i in range(len(sentences1)):
         hyp = sentences1[i]
@@ -26,20 +74,32 @@ def evaluete_scores_scarebleu(sentences1, sentences2):
             st.warning(f"Error processing SacréBLEU score for pair ({hyp}, {ref}): {e}")
             scarebleu_scores.append(0)
     avg_scarebleu = sum(scarebleu_scores) / len(scarebleu_scores) if scarebleu_scores else 0
+    score_cache[cache_key]={"scores":scarebleu_scores,"average":avg_scarebleu}
+    save_cache()
     return scarebleu_scores, avg_scarebleu
 
 
-def evaluete_scores_bluert(sentences1, sentences2):
+def evaluete_scores_bluert(sentences1, sentences2,filename):
+    cache_key = f"{filename}_bluert"
+    if cache_key in score_cache:
+        print(f"Loading cached Sacreblue scores for {filename}")
+        return score_cache[cache_key]["scores"],score_cache[cache_key]["average"]
+    
     hyp = sentences1
     ref = sentences2
+    
     try: 
         score_value = scorer.score(references=ref, candidates=hyp)
+        if isinstance(score_value, float):
+            score_value = [score_value]
         avg_bleurt = sum(score_value) / len(score_value) if score_value else 0
         score_value = [str(s) for s in score_value]  # Convert to strings
         print(score_value)
     except Exception as e:
         print(f"Error processing BLEURT score: {e}")
         return 0, ["NA"]
+    score_cache[cache_key]={"scores":score_value,"average":avg_bleurt}
+    save_cache()
     return avg_bleurt, score_value
 
 
@@ -47,7 +107,12 @@ def evaluete_scores_bluert(sentences1, sentences2):
 model_path = download_model("Unbabel/wmt22-comet-da")
 model = load_from_checkpoint(model_path)
 
-def evaluete_scores_comet(sentences1, sentences2, source_sentences):
+def evaluete_scores_comet(sentences1, sentences2, source_sentences,filename):
+    cache_key = f"{filename}_comet"
+    if cache_key in score_cache:
+        print(f"Loading cached Sacreblue scores for {filename}")
+        return score_cache[cache_key]["scores"],score_cache[cache_key]["average"]
+    
     try:
         comet_input = [{"src": src, "mt": hyp, "ref": ref} for src, hyp, ref in zip(source_sentences, sentences1, sentences2)]
         comet_scores = model.predict(comet_input, batch_size=8, gpus=1)
@@ -56,6 +121,9 @@ def evaluete_scores_comet(sentences1, sentences2, source_sentences):
         st.warning(f"Error processing COMET score: {e}")
         comet_scores = [0] * len(sentences1)
     avg_comet = sum(comet_scores) / len(comet_scores) if comet_scores else 0
+    score_cache[cache_key]={"scores":comet_scores,"average":avg_comet}
+    save_cache()
+
     return comet_scores, avg_comet
     
 

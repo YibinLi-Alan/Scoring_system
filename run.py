@@ -80,7 +80,7 @@ if selected_model_label:
             if selected_score_method == "sacreBLUE":
                 try:
                     for name_of_the_file,needed_file in uploaded_files_testing.items():
-                        result = evaluete_scores_scarebleu(needed_file, test_out_file_is)
+                        result = evaluete_scores_scarebleu(needed_file, test_out_file_is,f"{selected_model_label}_{name_of_the_file}")
                         scarebleu_scores, avg_scarebleu = result
 
                     
@@ -97,7 +97,7 @@ if selected_model_label:
                         st.dataframe(df)
 
                     for name_of_the_file1,needed_file1 in uploaded_files_training.items():
-                        result1 = evaluete_scores_scarebleu(needed_file1, train_out_file_is)
+                        result1 = evaluete_scores_scarebleu(needed_file1, train_out_file_is,f"{selected_model_label}_{name_of_the_file1}")
                         scarebleu_scores1, avg_scarebleu1 = result1
 
                         matched_sentences1 = list(zip(needed_file1, train_out_file_is))
@@ -118,7 +118,7 @@ if selected_model_label:
             if selected_score_method == "Bleurt":
                 try:
                     for name_of_the_file,needed_file in uploaded_files_testing.items():
-                        result = evaluete_scores_bluert(needed_file,test_out_file_is)
+                        result = evaluete_scores_bluert(needed_file,test_out_file_is,f"{selected_model_label}_{name_of_the_file}")
                         avg_bleurt,score_value = result
 
                     
@@ -135,7 +135,7 @@ if selected_model_label:
                         st.dataframe(df)
 
                     for name_of_the_file1,needed_file1 in uploaded_files_training.items():
-                        result1 = evaluete_scores_bluert(needed_file1, train_out_file_is)
+                        result1 = evaluete_scores_bluert(needed_file1, train_out_file_is,f"{selected_model_label}_{name_of_the_file1}")
                         avg_bleurt1,score_value1 = result1
 
                         matched_sentences1 = list(zip(needed_file1, train_out_file_is,score_value1))
@@ -156,7 +156,7 @@ if selected_model_label:
                 try:
                     for name_of_the_file,needed_file in uploaded_files_testing.items():
                         print(f'working on file {name_of_the_file} in first for loop')
-                        result = evaluete_scores_comet(needed_file, test_out_file_is,source_for_testing_is)
+                        result = evaluete_scores_comet(needed_file, test_out_file_is,source_for_testing_is,f"{selected_model_label}_{name_of_the_file}")
                         comet_scores, avg_comet= result
 
 
@@ -175,7 +175,7 @@ if selected_model_label:
                     for name_of_the_file1,needed_file1 in uploaded_files_training.items():
                         print(f'working on file {name_of_the_file} in second for loop')
 
-                        result1 = evaluete_scores_comet(needed_file1, train_out_file_is,source_for_trainning_is)
+                        result1 = evaluete_scores_comet(needed_file1, train_out_file_is,source_for_trainning_is,f"{selected_model_label}_{name_of_the_file1}")
                         comet_scores1, avg_comet1 = result1
 
                         matched_sentences1 = list(zip(needed_file1, train_out_file_is,comet_scores1))
