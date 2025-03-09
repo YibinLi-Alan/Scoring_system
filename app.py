@@ -83,7 +83,11 @@ def evaluete_scores_bluert(sentences1, sentences2,filename):
     cache_key = f"{filename}_bluert"
     if cache_key in score_cache:
         print(f"Loading cached Sacreblue scores for {filename}")
-        return score_cache[cache_key]["scores"],score_cache[cache_key]["average"]
+        cached_scores = score_cache[cache_key]["scores"]
+        cached_avg = score_cache[cache_key]["average"]
+        if isinstance(cached_scores, float):
+            cached_scores = [cached_scores]
+        return cached_avg, cached_scores
     
     hyp = sentences1
     ref = sentences2
@@ -93,14 +97,14 @@ def evaluete_scores_bluert(sentences1, sentences2,filename):
         if isinstance(score_value, float):
             score_value = [score_value]
         avg_bleurt = sum(score_value) / len(score_value) if score_value else 0
-        score_value = [str(s) for s in score_value]  # Convert to strings
-        print(score_value)
+        score_value_str = [str(s) for s in score_value]  # Convert to strings
+        print(score_value_str)
     except Exception as e:
         print(f"Error processing BLEURT score: {e}")
         return 0, ["NA"]
-    score_cache[cache_key]={"scores":score_value,"average":avg_bleurt}
+    score_cache[cache_key]={"scores":score_value_str,"average":avg_bleurt}
     save_cache()
-    return avg_bleurt, score_value
+    return avg_bleurt,score_value_str
 
 
 
